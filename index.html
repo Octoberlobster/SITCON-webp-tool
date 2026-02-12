@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SVG 轉 WebP (315x210 含留白)</title>
+    <title>SVG 轉 WebP/SVG 工具 (多尺寸版)</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -23,11 +23,37 @@
             border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             text-align: center;
-            max-width: 500px;
+            max-width: 700px;
             width: 100%;
         }
 
         h2 { margin-bottom: 1.5rem; color: #333; }
+
+        /* 尺寸選擇器樣式 */
+        .size-selector {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .radio-label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .radio-label input {
+            margin-right: 8px;
+            accent-color: #007bff;
+            transform: scale(1.2);
+        }
 
         .upload-btn-wrapper {
             position: relative;
@@ -59,41 +85,52 @@
             cursor: pointer;
         }
 
-        /* 預覽區域樣式 */
         .canvas-container {
             margin: 20px auto;
             border: 1px dashed #ccc;
-            /* 為了在螢幕上看得清楚，這裡僅做 CSS 顯示縮放，不影響實際輸出 */
             display: inline-block;
             background-image: linear-gradient(45deg, #eee 25%, transparent 25%, transparent 75%, #eee 75%, #eee), 
                               linear-gradient(45deg, #eee 25%, transparent 25%, transparent 75%, #eee 75%, #eee);
             background-position: 0 0, 10px 10px;
             background-size: 20px 20px;
+            max-width: 100%;
+            overflow: auto;
         }
 
         canvas {
             display: block;
-            /* 實際尺寸由 HTML 屬性控制，CSS 僅確保它不會溢出容器 */
-            max-width: 100%;
             height: auto;
         }
 
-        #downloadBtn {
-            background-color: #28a745;
+        .action-area {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        /* 通用按鈕樣式 */
+        .download-btn {
             color: white;
             border: none;
             padding: 12px 24px;
             border-radius: 8px;
             font-size: 16px;
             cursor: pointer;
-            display: none; /* 預設隱藏，轉換成功後顯示 */
+            display: none; /* 預設隱藏 */
+            transition: background 0.2s;
         }
         
-        #downloadBtn:hover { background-color: #218838; }
+        #downloadWebPBtn { background-color: #28a745; }
+        #downloadWebPBtn:hover { background-color: #218838; }
+
+        #downloadSvgBtn { background-color: #fd7e14; }
+        #downloadSvgBtn:hover { background-color: #e36d0e; }
 
         .info {
-            margin-top: 10px;
-            font-size: 0.9rem;
+            margin-top: 15px;
+            font-size: 0.85rem;
             color: #666;
         }
     </style>
@@ -101,8 +138,18 @@
 <body>
 
 <div class="container">
-    <h2>SVG 轉 WebP 工具</h2>
-    <p class="info">輸出尺寸: 315x210 px | 留白: 26.25 px</p>
+    <h2>SVG 版面配置工具</h2>
+    
+    <div class="size-selector">
+        <label class="radio-label">
+            <input type="radio" name="sizeMode" value="small" checked>
+            <span>315 x 210 (26.25px Pad)</span>
+        </label>
+        <label class="radio-label">
+            <input type="radio" name="sizeMode" value="large">
+            <span>600 x 400 (50px Pad)</span>
+        </label>
+    </div>
 
     <div class="upload-btn-wrapper">
         <button class="btn">選擇 SVG 檔案</button>
@@ -110,28 +157,94 @@
     </div>
 
     <div class="canvas-container">
-        <canvas id="previewCanvas" width="315" height="210"></canvas>
+        <canvas id="previewCanvas"></canvas>
     </div>
 
-    <button id="downloadBtn">下載 WebP 圖片</button>
+    <div class="action-area">
+        <button id="downloadWebPBtn" class="download-btn">下載 WebP</button>
+        <button id="downloadSvgBtn" class="download-btn">下載 SVG (含留白)</button>
+    </div>
+    
+    <p id="statusInfo" class="info">請選擇檔案...</p>
 </div>
 
 <script>
     const uploadInput = document.getElementById('uploadInput');
     const canvas = document.getElementById('previewCanvas');
     const ctx = canvas.getContext('2d');
-    const downloadBtn = document.getElementById('downloadBtn');
+    const downloadWebPBtn = document.getElementById('downloadWebPBtn');
+    const downloadSvgBtn = document.getElementById('downloadSvgBtn');
+    const statusInfo = document.getElementById('statusInfo');
+    const sizeRadios = document.querySelectorAll('input[name="sizeMode"]');
 
-    // 設定常數
-    const CANVAS_WIDTH = 315;
-    const CANVAS_HEIGHT = 210;
-    const PADDING = 26.25;
+    // 設定配置
+    const CONFIG = {
+        small: { 
+            width: 315, 
+            height: 210, 
+            padding: 26.25,
+            name: '315x210' 
+        },
+        large: { 
+            width: 600, 
+            height: 400, 
+            padding: 50.0,
+            name: '600x400'
+        }
+    };
 
-    // 計算繪圖的安全區域 (Safe Area)
-    // 寬度扣除左右 padding，高度扣除上下 padding
-    const DRAW_WIDTH = CANVAS_WIDTH - (PADDING * 2);  // 262.5
-    const DRAW_HEIGHT = CANVAS_HEIGHT - (PADDING * 2); // 157.5
+    let currentConfig = CONFIG.small;
+    let currentImgObject = null; // 圖片物件 (Image)
+    let currentSvgData = null;   // 原始 SVG 的 Base64 Data URL
+    let currentFileName = "image";
 
+    // 初始化
+    updateCanvasSize();
+
+    // 監聽尺寸切換
+    sizeRadios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            currentConfig = CONFIG[e.target.value];
+            updateCanvasSize();
+            if (currentImgObject) {
+                drawToCanvas();
+            }
+        });
+    });
+
+    function updateCanvasSize() {
+        canvas.width = currentConfig.width;
+        canvas.height = currentConfig.height;
+        if (!currentImgObject) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+    }
+
+    // 計算版面配置 (Geometry) - 給 Canvas 和 SVG 匯出共用
+    function calculateLayout() {
+        if (!currentImgObject) return null;
+
+        const { width, height, padding } = currentConfig;
+        const drawAreaW = width - (padding * 2);
+        const drawAreaH = height - (padding * 2);
+
+        // 計算縮放 (Contain)
+        const scale = Math.min(
+            drawAreaW / currentImgObject.width, 
+            drawAreaH / currentImgObject.height
+        );
+
+        const finalW = currentImgObject.width * scale;
+        const finalH = currentImgObject.height * scale;
+
+        // 計算置中座標
+        const x = padding + (drawAreaW - finalW) / 2;
+        const y = padding + (drawAreaH - finalH) / 2;
+
+        return { x, y, w: finalW, h: finalH };
+    }
+
+    // 上傳處理
     uploadInput.addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (!file) return;
@@ -141,45 +254,70 @@
             return;
         }
 
+        currentFileName = file.name.replace('.svg', '');
+        statusInfo.textContent = `處理中: ${file.name}`;
+
         const reader = new FileReader();
         reader.onload = function(event) {
+            currentSvgData = event.target.result; // 保存原始 Data URL
+            
             const img = new Image();
             img.onload = function() {
-                // 1. 清除畫布
-                ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-                // 2. 計算縮放比例 (Object-fit: contain 邏輯)
-                // 目標是讓圖片完整塞入 262.5 x 157.5 的框框內
-                const scale = Math.min(
-                    DRAW_WIDTH / img.width, 
-                    DRAW_HEIGHT / img.height
-                );
-
-                const w = img.width * scale;
-                const h = img.height * scale;
-
-                // 3. 計算置中位置 (Center)
-                // 左邊界 = Padding + (安全區寬 - 圖片實際寬) / 2
-                const x = PADDING + (DRAW_WIDTH - w) / 2;
-                const y = PADDING + (DRAW_HEIGHT - h) / 2;
-
-                // 4. 繪製圖片
-                ctx.drawImage(img, x, y, w, h);
-
-                // 5. 顯示下載按鈕並綁定事件
-                downloadBtn.style.display = 'inline-block';
-                downloadBtn.onclick = () => {
-                    const dataURL = canvas.toDataURL('image/webp', 0.9); // 0.9 為品質參數
-                    const link = document.createElement('a');
-                    link.download = `converted-${file.name.replace('.svg', '')}.webp`;
-                    link.href = dataURL;
-                    link.click();
-                };
+                currentImgObject = img;
+                drawToCanvas();
+                
+                // 顯示按鈕
+                downloadWebPBtn.style.display = 'inline-block';
+                downloadSvgBtn.style.display = 'inline-block';
+                statusInfo.textContent = `圖片已就緒 | 當前尺寸: ${currentConfig.width}x${currentConfig.height}`;
             };
-            img.src = event.target.result;
+            img.src = currentSvgData;
         };
         reader.readAsDataURL(file);
     });
+
+    // 繪製到 Canvas (供預覽與 WebP 輸出)
+    function drawToCanvas() {
+        const layout = calculateLayout();
+        if (!layout) return;
+
+        ctx.clearRect(0, 0, currentConfig.width, currentConfig.height);
+        ctx.drawImage(currentImgObject, layout.x, layout.y, layout.w, layout.h);
+    }
+
+    // 下載 WebP
+    downloadWebPBtn.onclick = () => {
+        const dataURL = canvas.toDataURL('image/webp', 0.9);
+        triggerDownload(dataURL, 'webp');
+    };
+
+    // 下載 SVG (新功能)
+    downloadSvgBtn.onclick = () => {
+        const layout = calculateLayout();
+        if (!layout || !currentSvgData) return;
+
+        // 建立新的 SVG XML 字串
+        // 這裡使用 <image> 標籤嵌入原始 SVG，確保不會發生 ID 衝突或樣式跑版
+        const svgContent = `
+<svg xmlns="http://www.w3.org/2000/svg" width="${currentConfig.width}" height="${currentConfig.height}" viewBox="0 0 ${currentConfig.width} ${currentConfig.height}">
+    <title>${currentFileName} with padding</title>
+    <image href="${currentSvgData}" x="${layout.x}" y="${layout.y}" width="${layout.w}" height="${layout.h}" />
+</svg>`.trim();
+
+        // 將 SVG 字串轉為 Blob URL
+        const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        
+        triggerDownload(url, 'svg');
+    };
+
+    // 通用下載觸發器
+    function triggerDownload(url, ext) {
+        const link = document.createElement('a');
+        link.download = `${currentFileName}-${currentConfig.name}.${ext}`;
+        link.href = url;
+        link.click();
+    }
 </script>
 
 </body>
