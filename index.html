@@ -3,232 +3,411 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SVG 轉 WebP/SVG 工具 (多尺寸版)</title>
+    <title>SVG 轉 WebP/SVG 轉換器 Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --primary-color: #4F46E5;
+            --primary-hover: #4338ca;
+            --secondary-color: #10B981;
+            --secondary-hover: #059669;
+            --accent-color: #F59E0B;
+            --accent-hover: #D97706;
+            --bg-color: #F3F4F6;
+            --card-bg: #FFFFFF;
+            --text-main: #1F2937;
+            --text-sub: #6B7280;
+            --border-color: #E5E7EB;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: #f0f2f5;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
             display: flex;
-            flex-direction: column;
-            align-items: center;
             justify-content: center;
+            align-items: center;
             min-height: 100vh;
             margin: 0;
             padding: 20px;
         }
 
-        .container {
-            background: white;
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            text-align: center;
-            max-width: 700px;
+        .app-container {
+            background: var(--card-bg);
             width: 100%;
-        }
-
-        h2 { margin-bottom: 1.5rem; color: #333; }
-
-        /* 尺寸選擇器樣式 */
-        .size-selector {
-            background: #e9ecef;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            flex-wrap: wrap;
-        }
-
-        .radio-label {
-            display: flex;
-            align-items: center;
-            cursor: pointer;
-            font-weight: 500;
-            color: #495057;
-        }
-
-        .radio-label input {
-            margin-right: 8px;
-            accent-color: #007bff;
-            transform: scale(1.2);
-        }
-
-        .upload-btn-wrapper {
-            position: relative;
+            max-width: 800px;
+            border-radius: 24px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
             overflow: hidden;
-            display: inline-block;
-            margin-bottom: 1rem;
+            display: flex;
+            flex-direction: column;
         }
 
-        .btn {
-            border: 2px solid #007bff;
-            color: #007bff;
-            background-color: white;
-            padding: 8px 20px;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: bold;
+        /* 標題區域 */
+        .header {
+            padding: 2rem 2rem 1rem 2rem;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .header p {
+            margin: 0.5rem 0 0;
+            color: var(--text-sub);
+            font-size: 0.9rem;
+        }
+
+        /* 主內容區 */
+        .main-content {
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            align-items: center;
+        }
+
+        /* 尺寸選擇器 (Segmented Control) */
+        .size-toggle {
+            background: #F9FAFB;
+            padding: 4px;
+            border-radius: 12px;
+            display: flex;
+            border: 1px solid var(--border-color);
+            width: fit-content;
+        }
+
+        .size-toggle label {
             cursor: pointer;
-            transition: 0.3s;
+            padding: 8px 24px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-sub);
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            line-height: 1.2;
         }
 
-        .btn:hover { background-color: #007bff; color: white; }
+        .size-toggle input {
+            display: none;
+        }
 
-        .upload-btn-wrapper input[type=file] {
-            font-size: 100px;
+        .size-toggle input:checked + div {
+            background: white;
+            color: var(--primary-color);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .toggle-btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .toggle-sub {
+            font-size: 0.75rem;
+            opacity: 0.8;
+            margin-top: 2px;
+        }
+
+        /* 拖放上傳區 */
+        .upload-zone {
+            width: 100%;
+            max-width: 500px;
+            border: 2px dashed var(--border-color);
+            border-radius: 16px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #F9FAFB;
+            position: relative;
+        }
+
+        .upload-zone:hover, .upload-zone.drag-over {
+            border-color: var(--primary-color);
+            background: #EEF2FF;
+        }
+
+        .upload-icon {
+            font-size: 2.5rem;
+            color: var(--text-sub);
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .upload-text {
+            font-weight: 600;
+            color: var(--text-main);
+            display: block;
+        }
+
+        .upload-hint {
+            font-size: 0.85rem;
+            color: var(--text-sub);
+            margin-top: 0.5rem;
+            display: block;
+        }
+
+        #uploadInput {
             position: absolute;
-            left: 0;
-            top: 0;
+            top: 0; left: 0; width: 100%; height: 100%;
             opacity: 0;
             cursor: pointer;
         }
 
-        .canvas-container {
-            margin: 20px auto;
-            border: 1px dashed #ccc;
-            display: inline-block;
-            background-image: linear-gradient(45deg, #eee 25%, transparent 25%, transparent 75%, #eee 75%, #eee), 
-                              linear-gradient(45deg, #eee 25%, transparent 25%, transparent 75%, #eee 75%, #eee);
-            background-position: 0 0, 10px 10px;
-            background-size: 20px 20px;
-            max-width: 100%;
-            overflow: auto;
+        /* 畫布預覽區 */
+        .preview-wrapper {
+            background: repeating-conic-gradient(#f0f0f0 0% 25%, white 0% 50%) 50% / 20px 20px;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 1rem;
+            width: 100%;
+            box-sizing: border-box;
+            min-height: 200px;
         }
 
         canvas {
-            display: block;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            max-width: 100%;
             height: auto;
+            background: transparent;
         }
 
-        .action-area {
+        /* 按鈕區 */
+        .action-buttons {
             display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-top: 15px;
+            gap: 1rem;
             flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 1rem;
+            opacity: 0.5;
+            pointer-events: none; /* 初始停用 */
+            transition: opacity 0.3s;
         }
 
-        /* 通用按鈕樣式 */
-        .download-btn {
-            color: white;
+        .action-buttons.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .btn {
             border: none;
             padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 16px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.95rem;
             cursor: pointer;
-            display: none; /* 預設隱藏 */
-            transition: background 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: transform 0.1s, background-color 0.2s;
+            color: white;
         }
-        
-        #downloadWebPBtn { background-color: #28a745; }
-        #downloadWebPBtn:hover { background-color: #218838; }
 
-        #downloadSvgBtn { background-color: #fd7e14; }
-        #downloadSvgBtn:hover { background-color: #e36d0e; }
+        .btn:active { transform: scale(0.98); }
 
-        .info {
-            margin-top: 15px;
+        .btn-webp { background-color: var(--secondary-color); }
+        .btn-webp:hover { background-color: var(--secondary-hover); }
+
+        .btn-svg { background-color: var(--accent-color); }
+        .btn-svg:hover { background-color: var(--accent-hover); }
+
+        .status-bar {
+            background: #F9FAFB;
+            padding: 10px 20px;
             font-size: 0.85rem;
-            color: #666;
+            color: var(--text-sub);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Badge */
+        .badge {
+            background: var(--primary-color);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>SVG 版面配置工具</h2>
-    
-    <div class="size-selector">
-        <label class="radio-label">
-            <input type="radio" name="sizeMode" value="small" checked>
-            <span>315 x 210 (26.25px Pad)</span>
-        </label>
-        <label class="radio-label">
-            <input type="radio" name="sizeMode" value="large">
-            <span>600 x 400 (50px Pad)</span>
-        </label>
+<div class="app-container">
+    <div class="header">
+        <h1>SVG 智能轉換器</h1>
+        <p>自動縮放、置中並添加安全邊距，一鍵匯出 WebP 或向量 SVG。</p>
     </div>
 
-    <div class="upload-btn-wrapper">
-        <button class="btn">選擇 SVG 檔案</button>
-        <input type="file" id="uploadInput" accept=".svg">
+    <div class="main-content">
+        <div class="size-toggle">
+            <label>
+                <input type="radio" name="sizeMode" value="small" checked>
+                <div class="toggle-btn">
+                    315 x 210
+                    <div class="toggle-sub">26.25px Padding</div>
+                </div>
+            </label>
+            <label>
+                <input type="radio" name="sizeMode" value="large">
+                <div class="toggle-btn">
+                    600 x 400
+                    <div class="toggle-sub">50px Padding</div>
+                </div>
+            </label>
+        </div>
+
+        <div class="upload-zone" id="dropZone">
+            <input type="file" id="uploadInput" accept=".svg">
+            <span class="upload-icon">📂</span>
+            <span class="upload-text">點擊或拖曳 SVG 檔案至此</span>
+            <span class="upload-hint">支援 .svg 向量格式</span>
+        </div>
+
+        <div class="preview-wrapper">
+            <canvas id="previewCanvas"></canvas>
+        </div>
+
+        <div class="action-buttons" id="actionArea">
+            <button id="downloadWebPBtn" class="btn btn-webp">
+                <span>⬇ 下載 WebP</span>
+            </button>
+            <button id="downloadSvgBtn" class="btn btn-svg">
+                <span>⬇ 下載 SVG (含留白)</span>
+            </button>
+        </div>
     </div>
 
-    <div class="canvas-container">
-        <canvas id="previewCanvas"></canvas>
+    <div class="status-bar">
+        <span id="statusText">等待檔案上傳...</span>
+        <span class="badge">PRO</span>
     </div>
-
-    <div class="action-area">
-        <button id="downloadWebPBtn" class="download-btn">下載 WebP</button>
-        <button id="downloadSvgBtn" class="download-btn">下載 SVG (含留白)</button>
-    </div>
-    
-    <p id="statusInfo" class="info">請選擇檔案...</p>
 </div>
 
 <script>
+    // --- 變數宣告 ---
+    const dropZone = document.getElementById('dropZone');
     const uploadInput = document.getElementById('uploadInput');
     const canvas = document.getElementById('previewCanvas');
     const ctx = canvas.getContext('2d');
+    const actionArea = document.getElementById('actionArea');
     const downloadWebPBtn = document.getElementById('downloadWebPBtn');
     const downloadSvgBtn = document.getElementById('downloadSvgBtn');
-    const statusInfo = document.getElementById('statusInfo');
+    const statusText = document.getElementById('statusText');
     const sizeRadios = document.querySelectorAll('input[name="sizeMode"]');
 
-    // 設定配置
+    // 設定檔
     const CONFIG = {
-        small: { 
-            width: 315, 
-            height: 210, 
-            padding: 26.25,
-            name: '315x210' 
-        },
-        large: { 
-            width: 600, 
-            height: 400, 
-            padding: 50.0,
-            name: '600x400'
-        }
+        small: { width: 315, height: 210, padding: 26.25, name: '315x210' },
+        large: { width: 600, height: 400, padding: 50.0, name: '600x400' }
     };
 
     let currentConfig = CONFIG.small;
-    let currentImgObject = null; // 圖片物件 (Image)
-    let currentSvgData = null;   // 原始 SVG 的 Base64 Data URL
+    let currentImgObject = null;
+    let currentSvgData = null;
     let currentFileName = "image";
 
     // 初始化
     updateCanvasSize();
 
-    // 監聽尺寸切換
+    // --- 事件監聽 ---
+
+    // 1. 尺寸切換
     sizeRadios.forEach(radio => {
         radio.addEventListener('change', (e) => {
             currentConfig = CONFIG[e.target.value];
             updateCanvasSize();
             if (currentImgObject) {
                 drawToCanvas();
+                statusText.textContent = `模式切換：${currentConfig.name}`;
             }
         });
     });
 
+    // 2. 拖放效果 (Drag & Drop Visuals)
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        }, false);
+    });
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+        }, false);
+    });
+
+    // 3. 檔案處理 (Drop & Input Change)
+    dropZone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        handleFiles(files);
+    });
+
+    uploadInput.addEventListener('change', (e) => {
+        handleFiles(e.target.files);
+    });
+
+    // --- 核心邏輯 ---
+
     function updateCanvasSize() {
         canvas.width = currentConfig.width;
         canvas.height = currentConfig.height;
-        if (!currentImgObject) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
+        if (!currentImgObject) ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
 
-    // 計算版面配置 (Geometry) - 給 Canvas 和 SVG 匯出共用
+    function handleFiles(files) {
+        if (!files.length) return;
+        const file = files[0];
+
+        if (file.type !== 'image/svg+xml') {
+            alert('錯誤：請上傳 SVG 格式檔案');
+            statusText.textContent = '錯誤：檔案格式不符';
+            return;
+        }
+
+        currentFileName = file.name.replace('.svg', '');
+        statusText.textContent = `正在處理：${file.name}...`;
+
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            currentSvgData = event.target.result;
+            const img = new Image();
+            img.onload = function() {
+                currentImgObject = img;
+                drawToCanvas();
+                actionArea.classList.add('active'); // 啟用按鈕
+                statusText.textContent = `就緒：${file.name} (${currentConfig.name})`;
+            };
+            img.src = currentSvgData;
+        };
+        reader.readAsDataURL(file);
+    }
+
     function calculateLayout() {
         if (!currentImgObject) return null;
-
         const { width, height, padding } = currentConfig;
         const drawAreaW = width - (padding * 2);
         const drawAreaH = height - (padding * 2);
 
-        // 計算縮放 (Contain)
         const scale = Math.min(
             drawAreaW / currentImgObject.width, 
             drawAreaH / currentImgObject.height
@@ -236,88 +415,51 @@
 
         const finalW = currentImgObject.width * scale;
         const finalH = currentImgObject.height * scale;
-
-        // 計算置中座標
         const x = padding + (drawAreaW - finalW) / 2;
         const y = padding + (drawAreaH - finalH) / 2;
 
         return { x, y, w: finalW, h: finalH };
     }
 
-    // 上傳處理
-    uploadInput.addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        if (file.type !== 'image/svg+xml') {
-            alert('請上傳 SVG 格式的檔案');
-            return;
-        }
-
-        currentFileName = file.name.replace('.svg', '');
-        statusInfo.textContent = `處理中: ${file.name}`;
-
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            currentSvgData = event.target.result; // 保存原始 Data URL
-            
-            const img = new Image();
-            img.onload = function() {
-                currentImgObject = img;
-                drawToCanvas();
-                
-                // 顯示按鈕
-                downloadWebPBtn.style.display = 'inline-block';
-                downloadSvgBtn.style.display = 'inline-block';
-                statusInfo.textContent = `圖片已就緒 | 當前尺寸: ${currentConfig.width}x${currentConfig.height}`;
-            };
-            img.src = currentSvgData;
-        };
-        reader.readAsDataURL(file);
-    });
-
-    // 繪製到 Canvas (供預覽與 WebP 輸出)
     function drawToCanvas() {
         const layout = calculateLayout();
         if (!layout) return;
-
         ctx.clearRect(0, 0, currentConfig.width, currentConfig.height);
+        // 使用白色背景填滿 (如果需要透明背景可註解這行)
+        // ctx.fillStyle = "white"; 
+        // ctx.fillRect(0,0, canvas.width, canvas.height);
+        
         ctx.drawImage(currentImgObject, layout.x, layout.y, layout.w, layout.h);
     }
 
-    // 下載 WebP
-    downloadWebPBtn.onclick = () => {
-        const dataURL = canvas.toDataURL('image/webp', 0.9);
-        triggerDownload(dataURL, 'webp');
-    };
+    // --- 下載功能 ---
 
-    // 下載 SVG (新功能)
-    downloadSvgBtn.onclick = () => {
-        const layout = calculateLayout();
-        if (!layout || !currentSvgData) return;
-
-        // 建立新的 SVG XML 字串
-        // 這裡使用 <image> 標籤嵌入原始 SVG，確保不會發生 ID 衝突或樣式跑版
-        const svgContent = `
-<svg xmlns="http://www.w3.org/2000/svg" width="${currentConfig.width}" height="${currentConfig.height}" viewBox="0 0 ${currentConfig.width} ${currentConfig.height}">
-    <title>${currentFileName} with padding</title>
-    <image href="${currentSvgData}" x="${layout.x}" y="${layout.y}" width="${layout.w}" height="${layout.h}" />
-</svg>`.trim();
-
-        // 將 SVG 字串轉為 Blob URL
-        const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        
-        triggerDownload(url, 'svg');
-    };
-
-    // 通用下載觸發器
     function triggerDownload(url, ext) {
         const link = document.createElement('a');
         link.download = `${currentFileName}-${currentConfig.name}.${ext}`;
         link.href = url;
         link.click();
     }
+
+    downloadWebPBtn.onclick = () => {
+        const dataURL = canvas.toDataURL('image/webp', 0.9);
+        triggerDownload(dataURL, 'webp');
+    };
+
+    downloadSvgBtn.onclick = () => {
+        const layout = calculateLayout();
+        if (!layout || !currentSvgData) return;
+
+        const svgContent = `
+<svg xmlns="http://www.w3.org/2000/svg" width="${currentConfig.width}" height="${currentConfig.height}" viewBox="0 0 ${currentConfig.width} ${currentConfig.height}">
+    <title>${currentFileName} with padding</title>
+    <image href="${currentSvgData}" x="${layout.x}" y="${layout.y}" width="${layout.w}" height="${layout.h}" />
+</svg>`.trim();
+
+        const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        triggerDownload(url, 'svg');
+    };
 </script>
 
 </body>
