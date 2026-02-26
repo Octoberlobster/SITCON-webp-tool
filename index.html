@@ -389,17 +389,24 @@
 
         const reader = new FileReader();
         reader.onload = function(event) {
-            currentSvgData = event.target.result;
+            currentSvgData = event.target.result; // 原始 SVG 文字內容
+            
+            // 為了在 Canvas 上繪製，我們仍然需要一個 Image 物件
+            // 使用 Blob URL 替代 Base64 Data URL 以提高效能且避免大型檔案導致的問題
+            const blob = new Blob([currentSvgData], { type: 'image/svg+xml' });
+            const url = URL.createObjectURL(blob);
+            
             const img = new Image();
             img.onload = function() {
                 currentImgObject = img;
                 drawToCanvas();
                 actionArea.classList.add('active'); // 啟用按鈕
                 statusText.textContent = `就緒：${file.name} (${currentConfig.name})`;
+                URL.revokeObjectURL(url); // 載入後釋放資源
             };
-            img.src = currentSvgData;
+            img.src = url;
         };
-        reader.readAsDataURL(file);
+        reader.readAsText(file);
     }
 
     function calculateLayout() {
@@ -450,10 +457,33 @@
         const layout = calculateLayout();
         if (!layout || !currentSvgData) return;
 
+        // 解析原始 SVG 以提取內容與 viewBox
+        const parser = new DOMParser();
+        const svgDoc = parser.parseFromString(currentSvgData, 'image/svg+xml');
+        const originalSvg = svgDoc.querySelector('svg');
+        
+        if (!originalSvg) {
+            alert('無法解析 SVG 內容');
+            return;
+        }
+
+        // 移除原始 SVG 可能存在的寬高屬性，改由外層容器透過 x, y, width, height 屬性控制
+        originalSvg.removeAttribute('width');
+        originalSvg.removeAttribute('height');
+        originalSvg.setAttribute('x', layout.x);
+        originalSvg.setAttribute('y', layout.y);
+        originalSvg.setAttribute('width', layout.w);
+        originalSvg.setAttribute('height', layout.h);
+        
+        // 取得新的 SVG 內容（包含修改過的 originalSvg）
+        const serializer = new XMLSerializer();
+        const innerSvgString = serializer.serializeToString(originalSvg);
+
+        // 構建新的向量容器
         const svgContent = `
 <svg xmlns="http://www.w3.org/2000/svg" width="${currentConfig.width}" height="${currentConfig.height}" viewBox="0 0 ${currentConfig.width} ${currentConfig.height}">
     <title>${currentFileName} with padding</title>
-    <image href="${currentSvgData}" x="${layout.x}" y="${layout.y}" width="${layout.w}" height="${layout.h}" />
+    ${innerSvgString}
 </svg>`.trim();
 
         const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
